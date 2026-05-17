@@ -1,29 +1,50 @@
+# __main__.py
+
+import inspect
 import pulumi
-from components import RegionalBucket
+import pulumi_aws as aws
+import json
 
-regions = ["us-east-1", "us-west-2","us-west-1"]
+# Lambda handler - defined here, deployed below
+def handler(event, context):
+    import json
+    return {
+        "statusCode": 200,
+        "body": json.dumps({"message": "Hello from Pulumi Lambda!"})
+    }
 
-configs = [
-    ("us-east-1", 30),
-    ("us-west-2", 90),
-    ("us-west-1", 90),
-]
+# IAM role for Lambda
+role = aws.iam.Role("lambda-role",
+    assume_role_policy=json.dumps({
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"Service": "lambda.amazonaws.com"},
+            "Action": "sts:AssumeRole"
+        }]
+    })
+)
 
-buckets = [
-    RegionalBucket(
-        f"{region}",
-        region=region,
-        bucket_name_prefix="lab-",
-        lifecycle_days=days,
-    )
-    for region, days in configs
-]
+aws.iam.RolePolicyAttachment("lambda-basic-execution",
+    role=role.name,
+    policy_arn="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+)
 
-bucket_arns_by_region = {
-    region: bucket.bucket.arn
-    for region, bucket in zip(regions, buckets)
-}
+lambda_source = f"""
+import json
 
-pulumi.export("bucket_arns_by_region", bucket_arns_by_region)
-pulumi.export("bucket_names", [b.bucket.id for b in buckets])
-pulumi.export("bucket_arns", [b.bucket.arn for b in buckets])
+{inspect.getsource(handler)}
+"""
+
+fn = aws.lambda_.Function(
+    "lab-function",
+    code=pulumi.AssetArchive({
+        "index.py": pulumi.StringAsset(lambda_source)
+        }),
+    runtime=aws.lambda_.Runtime.PYTHON3D11,
+    handler="index.handler",
+    role=role.arn
+)
+
+pulumi.export("function_name", fn.name)
+pulumi.export("function_arn", fn.arn)
