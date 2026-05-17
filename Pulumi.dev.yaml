@@ -2,3 +2,4 @@ encryptionsalt: v1:PvBIr+flg64=:v1:gZLkwTLTQmFAnDOc:nzvrw4fIiQjqex5pB6z/IqO4wVqq
 config:
   iac:github_token:
     secure: v1:GA3ciA4mUt5303Ki:yhYgRtUw5fUUZI0Cd/BhaxTVK3hHp0pIDuvVkdrcVTAtp+fTXWViKoLqNmi3XqcMgG+btPOuimA=
+  iac:repo_visibility: public

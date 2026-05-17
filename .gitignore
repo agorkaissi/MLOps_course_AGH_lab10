@@ -1,6 +1,7 @@
 .venv/
 .pulumi/
 .idea/
+__pycache__/
 .env
 .pulumi-home
 .pulumi-state
