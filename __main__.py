@@ -8,9 +8,34 @@ import json
 # Lambda handler - defined here, deployed below
 def handler(event, context):
     import json
+    import logging
+    import os
+
+    logging.basicConfig(level=logging.INFO)
+
+    log_level = os.getenv("LOG_LEVEL", "INFO")
+    logging.info(f"Lambda running with LOG_LEVEL={log_level}")
+
+    body = event.get("body")
+
+    if body:
+        try:
+            body = json.loads(body)
+        except Exception:
+            body = {}
+
+    name = body.get("name") if isinstance(body, dict) else None
+
+    if not name:
+        name = "World"
+
+    message = f"Hello, {name}!"
+
+    logging.info(f"Generated message: {message}")
+
     return {
         "statusCode": 200,
-        "body": json.dumps({"message": "Hello from Pulumi Lambda!"})
+        "body": json.dumps({"message": message})
     }
 
 # IAM role for Lambda
@@ -40,10 +65,15 @@ fn = aws.lambda_.Function(
     "lab-function",
     code=pulumi.AssetArchive({
         "index.py": pulumi.StringAsset(lambda_source)
-        }),
+    }),
     runtime=aws.lambda_.Runtime.PYTHON3D11,
     handler="index.handler",
-    role=role.arn
+    role=role.arn,
+    environment={
+        "variables": {
+            "LOG_LEVEL": "INFO"
+        }
+    }
 )
 
 pulumi.export("function_name", fn.name)
