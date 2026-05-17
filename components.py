@@ -4,7 +4,7 @@ import pulumi
 import pulumi_aws as aws
 
 class RegionalBucket(pulumi.ComponentResource):
-    def __init__(self, name: str, region: str, lifecycle_days: int = 90, opts=None):
+    def __init__(self, name: str, region: str, bucket_name_prefix: str = "", lifecycle_days: int = 90, opts=None):
         super().__init__("lab:index:RegionalBucket", name, {}, opts)
 
         child_opts = pulumi.ResourceOptions(parent=self)
@@ -16,7 +16,10 @@ class RegionalBucket(pulumi.ComponentResource):
 
         resource_opts = pulumi.ResourceOptions(parent=self, provider=provider)
 
-        self.bucket = aws.s3.Bucket(f"{name}-bucket",
+        bucket_name = f"{bucket_name_prefix}{name}-bucket"
+
+        self.bucket = aws.s3.Bucket(
+            bucket_name,
             tags={"Region": region},
             opts=resource_opts
         )
@@ -42,7 +45,10 @@ class RegionalBucket(pulumi.ComponentResource):
             opts=resource_opts
         )
 
+        self.bucket_name = bucket_name
+
         self.register_outputs({
             "bucket_id": self.bucket.id,
-            "bucket_arn": self.bucket.arn
+            "bucket_arn": self.bucket.arn,
+            "bucket_name": self.bucket_name,
         })
