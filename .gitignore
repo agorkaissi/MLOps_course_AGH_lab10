@@ -1,0 +1,6 @@
+.venv/
+.pulumi/
+.idea/
+.env
+.pulumi-home
+.pulumi-state
