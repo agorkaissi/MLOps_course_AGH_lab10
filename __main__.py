@@ -3,46 +3,26 @@
 import pulumi
 import pulumi_aws as aws
 
-bucket = aws.s3.Bucket(
-    "lab-bucket",
-    tags={"Name": "pulumi-lab"}
-)
+regions = ["us-east-1", "us-west-2"]
+buckets = []
 
-uploaded_file = aws.s3.BucketObject(
-    "index-html",
-    bucket=bucket.id,
-    key="index.html",
-    content="<h1>Hello from Pulumi!</h1>",
-    content_type="text/html"
-)
+for region in regions:
+    provider = aws.Provider(f"provider-{region}", region=region)
 
-website = aws.s3.BucketWebsiteConfiguration(
-    "website",
-    bucket=bucket.id,
-    index_document=aws.s3.BucketWebsiteConfigurationIndexDocumentArgs(
-        suffix="index.html"
+    bucket = aws.s3.Bucket(f"bucket-{region}",
+        tags={"Region": region},
+        opts=pulumi.ResourceOptions(provider=provider)
     )
-)
 
-pab = aws.s3.BucketPublicAccessBlock(
-    "public-access-block",
-    bucket=bucket.id,
-    block_public_acls=False,
-    block_public_policy=False,
-    ignore_public_acls=False,
-    restrict_public_buckets=False,
-)
+    aws.s3.BucketVersioning(f"versioning-{region}",
+        bucket=bucket.id,
+        versioning_configuration=aws.s3.BucketVersioningVersioningConfigurationArgs(
+            status="Enabled"
+        ),
+        opts=pulumi.ResourceOptions(provider=provider)
+    )
 
-policy_document = pulumi.Output.format('{{"Version":"2012-10-17","Statement":[{{"Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"{0}/*"}}]}}', bucket.arn)
+    buckets.append(bucket)
 
-aws.s3.BucketPolicy(
-    "bucket-policy",
-     bucket=bucket.id,
-     policy=policy_document,
-     opts=pulumi.ResourceOptions(depends_on=[pab])
- )
-
-pulumi.export("bucket_name", bucket.id)
-pulumi.export("bucket_arn", bucket.arn)
-pulumi.export("website_url", website.website_endpoint)
-
+pulumi.export("bucket_names", [b.id for b in buckets])
+pulumi.export("bucket_arns", [b.arn for b in buckets])
