@@ -3,8 +3,9 @@
 import pulumi
 import pulumi_aws as aws
 
-regions = ["us-east-1", "us-west-2"]
+regions = ["us-east-1", "us-west-2", "us-west-1"]
 buckets = []
+bucket_arns_by_region = {}
 
 for region in regions:
     provider = aws.Provider(f"provider-{region}", region=region)
@@ -22,7 +23,22 @@ for region in regions:
         opts=pulumi.ResourceOptions(provider=provider)
     )
 
+    aws.s3.BucketLifecycleConfiguration(f"lifecycle-{region}",
+        bucket=bucket.id,
+        rules=[aws.s3.BucketLifecycleConfigurationRuleArgs(
+            id="glacier-transition",
+            status="Enabled",
+            transitions=[aws.s3.BucketLifecycleConfigurationRuleTransitionArgs(
+                days=90,
+                storage_class="GLACIER",
+            )],
+        )],
+        opts=pulumi.ResourceOptions(provider=provider),
+    )
+
+    bucket_arns_by_region[region] = bucket.arn
     buckets.append(bucket)
 
 pulumi.export("bucket_names", [b.id for b in buckets])
 pulumi.export("bucket_arns", [b.arn for b in buckets])
+pulumi.export("bucket_arns_by_region", bucket_arns_by_region)
